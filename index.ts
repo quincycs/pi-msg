@@ -455,9 +455,7 @@ function sendMsgMessage(
       ? `📨 [msg] Message from **${from}**: ${text}` +
         (options.expectAnswer
           ? `\n\nThis msg expects a reply. Compose a brief response and send it back using msg_send with target="${from}".`
-          : `\n\nThis msg does NOT expect a reply. Reply ONLY if it contains a genuine question or task you must address. ` +
-            `Do NOT send back acknowledgments, "thanks", "same to you", closing remarks, or emoji-only replies. ` +
-            `If the message feels like a conversation ending, let it end.`)
+          : `\n\nThis msg does NOT expect a reply. Act on it if needed, otherwise continue your current work.`)
       : `📨 [msg] Message to **${to}**: ${text}`;
   pi.sendMessage(
     {
@@ -483,7 +481,9 @@ function deliverMsgMessage(
   const deliverAs = agentBusy && delivery.steer ? "steer" : undefined;
   return sendMsgMessage(pi, delivery.from, delivery.text, delivery.direction, delivery.to, {
     deliverAs,
-    triggerTurn: delivery.direction === "incoming" && triggerTurn,
+    // Only trigger the agent when the incoming msg explicitly asks for a reply.
+    // Passive msgs (expectAnswer=false) just appear in context; the user sees the bubble.
+    triggerTurn: delivery.direction === "incoming" && triggerTurn && delivery.expectAnswer === true,
     expectAnswer: delivery.expectAnswer,
   });
 }
@@ -504,9 +504,12 @@ function flushPendingMsgDeliveries(pi: ExtensionAPI): void {
   if (agentBusy || pendingMsgDeliveries.length === 0) return;
   const pending = pendingMsgDeliveries;
   pendingMsgDeliveries = [];
-  const lastIncomingIndex = pending.map((d) => d.direction).lastIndexOf("incoming");
+  // Only trigger the last incoming msg that explicitly expects an answer.
+  const lastExpectAnswerIndex = pending
+    .map((d) => d.direction === "incoming" && d.expectAnswer === true)
+    .lastIndexOf(true);
   for (let i = 0; i < pending.length; i += 1) {
-    deliverMsgMessage(pi, pending[i], i === lastIncomingIndex);
+    deliverMsgMessage(pi, pending[i], i === lastExpectAnswerIndex);
   }
 }
 
@@ -515,15 +518,12 @@ function triggerAgentTurn(pi: ExtensionAPI): void {
   pi.sendUserMessage("👆", { deliverAs: "followUp" });
 }
 
-// Inject many messages — each gets its own bubble + triggers agent
+// Inject many messages — each gets its own bubble. Do NOT trigger the agent;
+// the messages are visible in chat and the agent will see them on the next turn.
 function injectMany(pi: ExtensionAPI, messages: Array<{ from: string; text: string }>): void {
-  let anyDelivered = false;
   for (const m of messages) {
-    if (sendMsgMessage(pi, m.from, m.text, "incoming")) {
-      anyDelivered = true;
-    }
+    sendMsgMessage(pi, m.from, m.text, "incoming");
   }
-  if (anyDelivered) triggerAgentTurn(pi);
 }
 
 export default function msgExtension(pi: ExtensionAPI) {
@@ -802,13 +802,12 @@ export default function msgExtension(pi: ExtensionAPI) {
       "IMPORTANT: When asked to send a msg, rephrase the text into a natural, " +
       "first-person message in your own words. Do NOT send the instruction text verbatim.\n" +
       "Only send msgs when explicitly asked by the user. " +
-      "When you receive a msg, READ it and tell your user what it said. " +
-      "Reply using msg_send ONLY when the message explicitly asks for a reply (expect_answer=true) " +
-      "or when it contains a genuine question you must answer. " +
+      "When you receive a msg, act on it directly. Do NOT narrate or summarize it to the user — they can already see it in the chat. " +
+      "Reply using msg_send ONLY when the message explicitly asks for a reply (expect_answer=true). " +
       "Do NOT send back politeness, acknowledgments, closing remarks, 'thanks', 'same to you', or emoji-only replies — " +
       "these waste tokens and create infinite loops between agents.\n" +
       "To ask for a reply, set expect_answer=true on msg_send. " +
-      "The recipient's agent will automatically compose and send a response. " +
+      "The recipient's agent will be triggered to compose and send a response. " +
       "By default, msgs do not interrupt a busy agent; use steer=true only for urgent messages that should affect the current turn.\n" +
       "IMPORTANT: If the target session is offline, the message is queued to its inbox. " +
       "Inform the user that the message was queued. Do NOT decide to act on the message yourself — wait for the user to tell you what to do next.";
