@@ -85,6 +85,13 @@ function getHostName(): string {
   }
 }
 
+// Sender identity: msg network name takes priority over Pi session name.
+function getSenderName(ctx: {
+  sessionManager: { getSessionName: () => string | undefined };
+}): string {
+  return sessionName ?? ctx.sessionManager.getSessionName() ?? getHostName();
+}
+
 // ─── Session file discovery ─────────────────────────────
 // Scan all Pi session JSONL files to find one by its /name.
 
@@ -1110,7 +1117,7 @@ export default function msgExtension(pi: ExtensionAPI) {
         unknownTarget = !lookup.file;
       }
 
-      const from = ctx.sessionManager.getSessionName() || getHostName();
+      const from = getSenderName(ctx);
       if (target === from) {
         ctx.ui.notify("Can't send a message to yourself.", "error");
         return;
@@ -1183,7 +1190,7 @@ export default function msgExtension(pi: ExtensionAPI) {
         unknownTarget = !lookup.file;
       }
 
-      const from = ctx.sessionManager.getSessionName() || getHostName();
+      const from = getSenderName(ctx);
       if (params.target === from) {
         return {
           content: [{ type: "text", text: "Can't send a message to yourself." }],
