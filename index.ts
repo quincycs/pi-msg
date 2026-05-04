@@ -518,11 +518,18 @@ function triggerAgentTurn(pi: ExtensionAPI): void {
   pi.sendUserMessage("👆", { deliverAs: "followUp" });
 }
 
-// Inject many messages — each gets its own bubble. Do NOT trigger the agent;
-// the messages are visible in chat and the agent will see them on the next turn.
-function injectMany(pi: ExtensionAPI, messages: Array<{ from: string; text: string }>): void {
+// Inject many messages — each gets its own bubble.
+// `trigger=true` wakes the agent (use when the user explicitly asked to consume msgs).
+function injectMany(
+  pi: ExtensionAPI,
+  messages: Array<{ from: string; text: string }>,
+  trigger = false,
+): void {
   for (const m of messages) {
     sendMsgMessage(pi, m.from, m.text, "incoming");
+  }
+  if (trigger && messages.length > 0) {
+    triggerAgentTurn(pi);
   }
 }
 
@@ -879,7 +886,7 @@ export default function msgExtension(pi: ExtensionAPI) {
         } else {
           const toInject = [...inboxMessages];
           inboxMessages = [];
-          injectMany(pi, toInject);
+          injectMany(pi, toInject, true);
           ctx.ui.notify(
             `Joined msg network — delivering ${toInject.length} pending message(s)...`,
             "info",
@@ -946,7 +953,7 @@ export default function msgExtension(pi: ExtensionAPI) {
         drainInbox(name); // actually delete files
         const toInject = [...inboxMessages];
         inboxMessages = [];
-        injectMany(pi, toInject);
+        injectMany(pi, toInject, true);
         ctx.ui.notify(`Injecting ${toInject.length} msg(s) one by one...`, "info");
         return;
       }
