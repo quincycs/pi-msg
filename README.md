@@ -1,21 +1,21 @@
-# pi-session-bridge
+# pi-msg
 
 Let Pi sessions talk to each other via Unix sockets.
 
 ## Install
 
-pi install git:github.com/m7l5/pi-session-bridge
+pi install git:github.com/m7l5/pi-msg
 
 ## Usage
 
-/bridge-on [name]       Join the bridge
-/bridge-off             Leave the bridge
-/bridge-list            List online sessions
-/bridge-send <name>     Send a message
+/msg-on [name]       Join the msg network
+/msg-off             Leave the msg network
+/msg-list            List online sessions
+/msg-send <name>     Send a message
 
 ## How it works
 
-Sockets at ~/.pi/bridge/<name>.sock.
+Sockets at ~/.pi/msg/<name>.sock.
 
 Online detection = can you connect to the socket?
 Offline = socket doesn't exist or refuses connection.
