@@ -455,7 +455,9 @@ function sendMsgMessage(
       ? `📨 [msg] Message from **${from}**: ${text}` +
         (options.expectAnswer
           ? `\n\nThis msg expects a reply. Compose a brief response and send it back using msg_send with target="${from}".`
-          : "")
+          : `\n\nThis msg does NOT expect a reply. Reply ONLY if it contains a genuine question or task you must address. ` +
+            `Do NOT send back acknowledgments, "thanks", "same to you", closing remarks, or emoji-only replies. ` +
+            `If the message feels like a conversation ending, let it end.`)
       : `📨 [msg] Message to **${to}**: ${text}`;
   pi.sendMessage(
     {
@@ -800,7 +802,11 @@ export default function msgExtension(pi: ExtensionAPI) {
       "IMPORTANT: When asked to send a msg, rephrase the text into a natural, " +
       "first-person message in your own words. Do NOT send the instruction text verbatim.\n" +
       "Only send msgs when explicitly asked by the user. " +
-      "When you receive a msg, respond naturally as if that person sent it.\n" +
+      "When you receive a msg, READ it and tell your user what it said. " +
+      "Reply using msg_send ONLY when the message explicitly asks for a reply (expect_answer=true) " +
+      "or when it contains a genuine question you must answer. " +
+      "Do NOT send back politeness, acknowledgments, closing remarks, 'thanks', 'same to you', or emoji-only replies — " +
+      "these waste tokens and create infinite loops between agents.\n" +
       "To ask for a reply, set expect_answer=true on msg_send. " +
       "The recipient's agent will automatically compose and send a response. " +
       "By default, msgs do not interrupt a busy agent; use steer=true only for urgent messages that should affect the current turn.\n" +
