@@ -35,7 +35,7 @@ import { homedir } from "node:os";
 
 type MsgMessage =
   | { type: "hello"; from: string; cwd: string }
-  | { type: "text"; from: string; text: string; expectAnswer?: boolean; steer?: boolean }
+  | { type: "text"; from: string; text: string; expectAnswer?: boolean; steer?: boolean; asUser?: boolean }
   | { type: "bye" };
 
 // ─── State ───────────────────────────────────────────────
@@ -364,6 +364,8 @@ function startMsgServer(pi: ExtensionAPI, name: string): void {
         if (msg.type === "text") {
           if (inboxMode) {
             writeInbox(sessionName!, msg.from, msg.text);
+          } else if (msg.asUser) {
+            sendSocketUserMessage(pi, msg.text, msg.steer);
           } else {
             queueOrDeliverMsgMessage(pi, {
               from: msg.from,
@@ -494,6 +496,14 @@ function deliverMsgMessage(
     triggerTurn: delivery.direction === "incoming" && triggerTurn,
     expectAnswer: delivery.expectAnswer,
   });
+}
+
+function sendSocketUserMessage(pi: ExtensionAPI, text: string, steer?: boolean): void {
+  if (agentBusy) {
+    pi.sendUserMessage(text, { deliverAs: steer ? "steer" : "followUp" });
+    return;
+  }
+  pi.sendUserMessage(text);
 }
 
 function queueOrDeliverMsgMessage(pi: ExtensionAPI, delivery: PendingMsgDelivery): boolean {
